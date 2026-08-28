@@ -1,0 +1,109 @@
+// Prisma schema for single-database, shared-schema multi-tenancy
+// Important: all tenant-scoped tables include `tenant_id` and a foreign key
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  products  Product[]
+  orders    Order[]
+  accounts  Account[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  tenant      Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  priceCents  Int
+  createdAt   DateTime @default(now())
+
+  @@index([tenant_id])
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  tenant_id     String
+  tenant        Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  externalRef   String?     @unique
+  amountCents   Int
+  currency      String      @default("SZL")
+  status        OrderStatus @default(PENDING)
+  createdAt     DateTime    @default(now())
+  transactions  Transaction[]
+
+  @@index([tenant_id])
+}
+
+enum OrderStatus {
+  PENDING
+  INITIATED
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Transaction {
+  id              String     @id @default(uuid())
+  tenant_id       String
+  tenant          Tenant     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  orderId         String?
+  externalRef     String?    @unique
+  amountCents     Int
+  currency        String     @default("SZL")
+  status          TxStatus   @default(PENDING)
+  createdAt       DateTime   @default(now())
+  ledgerEntries   LedgerEntry[]
+
+  @@index([tenant_id])
+}
+
+enum TxStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model Account {
+  id          String    @id @default(uuid())
+  tenant_id   String?
+  tenant      Tenant?   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  type        AccountType
+  balanceCents BigInt   @default(0)
+  createdAt   DateTime  @default(now())
+  entries     LedgerEntry[]
+
+  @@unique([tenant_id, type])
+}
+
+enum AccountType {
+  PLATFORM
+  TENANT_WALLET
+}
+
+model LedgerEntry {
+  id            String   @id @default(uuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  accountId     String
+  account       Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  amountCents   Int
+  direction     EntryDirection
+  createdAt     DateTime @default(now())
+}
+
+enum EntryDirection {
+  CREDIT
+  DEBIT
+}
