@@ -1,4 +1,4 @@
-import db from '../config/db.js';
+import db from './config/db.js';
 import logger from './logger.js';
 
 export const logActivity = async (req, action, resource, resourceId = null, oldValue = null, newValue = null) => {
