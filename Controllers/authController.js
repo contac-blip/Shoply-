@@ -57,8 +57,14 @@ export const signup = async (req, res) => {
     res.status(201).json({ token, user });
   } catch (err) {
     logger.error('Signup failed', { error: err, email, requestId: req.id });
-    console.error('Signup failed:', err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('SIGNUP ERROR:', err);
+    console.error('SIGNUP ERROR MESSAGE:', err.message);
+    console.error('SIGNUP ERROR STACK:', err.stack);
+
+    res.status(500).json({
+      message: 'Server error',
+      error: err.message,
+    });
   }
 };
 
